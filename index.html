@@ -1,71 +1,706 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>热泵空调一体机参数对比</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>空调主机数据对比平台</title>
+    <!-- 引入Bootstrap5 核心依赖 -->
+    <link href="https://cdn.bootcdn.net/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.bootcdn.net/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+    <style>
+        /* 自定义样式 */
+        :root {
+            --primary-color: #165DFF;
+        }
+        body {
+            background-color: #f5f7fa;
+            padding-bottom: 80px;
+        }
+        .header {
+            background: linear-gradient(135deg, var(--primary-color), #0040C9);
+            color: white;
+            padding: 30px 0;
+            margin-bottom: 30px;
+        }
+        .filter-card, .list-card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .filter-title {
+            font-weight: 600;
+            margin-bottom: 15px;
+            font-size: 16px;
+        }
+        .filter-group {
+            margin-bottom: 20px;
+        }
+        .brand-checkboxes, .text-checkboxes {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px 15px;
+        }
+        .range-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .product-card {
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 15px;
+            height: 100%;
+            transition: all 0.2s;
+            display: flex;
+            flex-direction: column;
+        }
+        .product-card:hover {
+            box-shadow: 0 4px 12px rgba(22, 93, 255, 0.15);
+            border-color: var(--primary-color);
+        }
+        .product-img {
+            width: 100%;
+            height: 180px;
+            object-fit: contain;
+            border-radius: 4px;
+            margin-bottom: 12px;
+            background-color: #f9fafb;
+        }
+        .product-name {
+            font-weight: 600;
+            font-size: 16px;
+            margin-bottom: 8px;
+            color: #111827;
+        }
+        .product-param {
+            font-size: 14px;
+            color: #6b7280;
+            margin-bottom: 4px;
+        }
+        .param-highlight {
+            color: var(--primary-color);
+            font-weight: 500;
+        }
+        .compare-fixed-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            box-shadow: 0 -2px 12px rgba(0,0,0,0.1);
+            padding: 12px 20px;
+            z-index: 999;
+            display: none;
+        }
+        .compare-table th, .compare-table td {
+            text-align: center;
+            vertical-align: middle;
+            white-space: nowrap;
+        }
+        .compare-table th:first-child, .compare-table td:first-child {
+            text-align: left;
+            font-weight: 600;
+            background-color: #f9fafb;
+            position: sticky;
+            left: 0;
+            z-index: 10;
+        }
+        .loading-box {
+            text-align: center;
+            padding: 60px 0;
+            color: #6b7280;
+        }
+        .empty-box {
+            text-align: center;
+            padding: 40px 0;
+            color: #9ca3af;
+        }
+        .filter-collapse .card-header {
+            padding: 0;
+            background: none;
+            border: none;
+        }
+        .filter-collapse .btn-link {
+            padding: 10px 0;
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: 500;
+            width: 100%;
+            text-align: left;
+        }
+    </style>
 </head>
-<body class="bg-gray-50 min-h-screen p-6">
-  <div class="max-w-6xl mx-auto">
-    <h1 class="text-4xl font-bold text-center text-blue-800 mb-8">热泵空调一体机参数对比</h1>
-    
-    <div id="loading" class="text-center text-gray-700 text-xl mb-6">正在加载数据，请稍候...</div>
-    
-    <div class="overflow-x-auto rounded-xl shadow-lg bg-white">
-      <table class="min-w-full divide-y divide-gray-200">
-        <thead class="bg-blue-600 text-white">
-          <tr id="headers"></tr>
-        </thead>
-        <tbody id="rows" class="divide-y divide-gray-200 bg-white"></tbody>
-      </table>
+<body>
+    <!-- 顶部标题 -->
+    <header class="header">
+        <div class="container">
+            <h1 class="h2 mb-2">空调主机数据对比平台</h1>
+            <p class="mb-0 opacity-75">实时同步飞书数据 | 全字段自动适配 | 多维度筛选 | 多机型参数对比</p>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- 搜索与核心筛选区 -->
+        <div class="filter-card">
+            <div class="row g-3 mb-3">
+                <!-- 全局搜索框 -->
+                <div class="col-12 col-lg-4">
+                    <label class="form-label filter-title">关键词全局搜索</label>
+                    <input type="text" id="searchInput" class="form-control" placeholder="搜索型号、品牌、参数关键词">
+                </div>
+
+                <!-- 排序选择 -->
+                <div class="col-12 col-lg-3">
+                    <label class="form-label filter-title">排序方式</label>
+                    <select id="sortSelect" class="form-select">
+                        <option value="default">默认排序</option>
+                        <!-- 排序选项会自动根据你的数字列生成 -->
+                    </select>
+                </div>
+
+                <!-- 重置按钮 -->
+                <div class="col-12 col-lg-2 d-flex align-items-end">
+                    <button id="resetBtn" class="btn btn-outline-secondary w-100">重置所有筛选</button>
+                </div>
+            </div>
+
+            <hr>
+
+            <!-- 自动生成的筛选区 -->
+            <div class="row g-3" id="filterContainer">
+                <!-- 品牌、类型等文本筛选，制冷量、价格等数值筛选，全部自动生成 -->
+            </div>
+        </div>
+
+        <!-- 产品列表区 -->
+        <div class="list-card">
+            <div id="loading" class="loading-box">
+                <div class="spinner-border text-primary" role="status"></div>
+                <p class="mt-2 mb-0">正在加载飞书表格数据...</p>
+            </div>
+            <div id="productList" class="row g-3"></div>
+        </div>
     </div>
-  </div>
 
-  <script>
-    // 用 allorigins.win 代理（更稳定）
-    const CSV_URL = './data.csv';   // 或 'https://raw.githubusercontent.com/niliuyinyu/ac-pk/main/data.csv'
+    <!-- 底部固定对比栏 -->
+    <div class="compare-fixed-bar" id="compareBar">
+        <div class="container d-flex justify-content-between align-items-center">
+            <div>
+                <span>已选 <span id="selectedCount" class="text-primary fw-bold">0</span> 款机型（最多可选4款）</span>
+            </div>
+            <div class="d-flex gap-2">
+                <button id="clearCompareBtn" class="btn btn-outline-secondary">清空选择</button>
+                <button id="openCompareBtn" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#compareModal" disabled>开始对比</button>
+            </div>
+        </div>
+    </div>
 
-    Papa.parse(CSV_URL, {
-      download: true,
-      header: true,
-      skipEmptyLines: true,
-      complete: function(results) {
-        document.getElementById('loading').style.display = 'none';
-        const data = results.data.filter(row => row['型号'] && row['型号'].trim() !== '');
+    <!-- 对比弹窗 -->
+    <div class="modal fade" id="compareModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">机型参数对比</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered compare-table" id="compareTable">
+                            <!-- 对比表格自动根据你的表头生成 -->
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-        if (data.length === 0) {
-          document.getElementById('rows').innerHTML = '<tr><td colspan="20" class="text-center text-red-600 py-10 font-bold">暂无数据或加载失败，请检查 Sheets 是否有内容</td></tr>';
-          return;
+    <script>
+        // 核心配置：你的飞书表格CSV链接（已根据你给的链接生成）
+        //const csvUrl = 'https://jcnv0kfbn39h.feishu.cn/base/dl?baseId=I4SWbKHq1a5UCAsLtk9cgZFanCc&tableId=tbl4eK8kvZwkyhpd&viewId=vew4S1fxWG&format=csv';
+        // 跨域备用方案：如果上面的链接报跨域/加载失败，把下面这行的注释打开，注释掉上面的链接即可
+        const csvUrl = 'https://corsproxy.io/?' + encodeURIComponent('https://jcnv0kfbn39h.feishu.cn/base/dl?baseId=I4SWbKHq1a5UCAsLtk9cgZFanCc&tableId=tbl4eK8kvZwkyhpd&viewId=vew4S1fxWG&format=csv');
+
+        // 全局配置（可按需调整）
+        const config = {
+            maxCompareCount: 4, // 最多对比数量
+            imageFieldNames: ['图片', '图片链接', '封面图', '产品图'], // 自动识别图片列的关键词
+            nameFieldNames: ['型号', '名称', '产品型号', '机型'], // 自动识别产品名称的关键词
+            brandFieldNames: ['品牌', '品牌名称', '厂商'], // 自动识别品牌列的关键词
+        };
+
+        // 全局变量
+        let tableHeaders = []; // 你的表格表头（自动获取）
+        let originData = []; // 原始完整数据（自动获取）
+        let filteredData = []; // 筛选后的数据
+        let selectedProducts = []; // 选中对比的产品
+        let fieldTypeMap = {}; // 字段类型映射（文本/数字/图片）
+        let filterConfig = {
+            textFilters: {}, // 文本筛选条件
+            rangeFilters: {}, // 数值区间筛选条件
+            searchKeyword: '', // 搜索关键词
+            sortType: 'default' // 排序方式
+        };
+
+        // 1. 页面加载完成后执行
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadAndParseData(); // 加载并解析飞书数据
+            if (originData.length > 0) {
+                initFilterArea(); // 自动生成筛选区域
+                initSortOptions(); // 自动生成排序选项
+                initEventListeners(); // 初始化事件监听
+                renderProductList(); // 渲染产品列表
+            }
+        });
+
+        // 2. 加载并解析飞书CSV数据，自动识别表头和字段类型
+        async function loadAndParseData() {
+            try {
+                const response = await fetch(csvUrl);
+                if (!response.ok) throw new Error('数据请求失败');
+                const csvText = await response.text();
+                
+                // 解析CSV，处理带引号、带逗号的内容
+                const parseCSV = (text) => {
+                    const lines = [];
+                    let currentLine = [];
+                    let inQuotes = false;
+                    let currentValue = '';
+
+                    for (let i = 0; i < text.length; i++) {
+                        const char = text[i];
+                        if (char === '"') {
+                            inQuotes = !inQuotes;
+                        } else if (char === ',' && !inQuotes) {
+                            currentLine.push(currentValue.trim().replace(/^"|"$/g, ''));
+                            currentValue = '';
+                        } else if (char === '\n' && !inQuotes) {
+                            currentLine.push(currentValue.trim().replace(/^"|"$/g, ''));
+                            lines.push(currentLine);
+                            currentLine = [];
+                            currentValue = '';
+                        } else {
+                            currentValue += char;
+                        }
+                    }
+                    if (currentLine.length > 0 || currentValue) {
+                        currentLine.push(currentValue.trim().replace(/^"|"$/g, ''));
+                        lines.push(currentLine);
+                    }
+                    return lines.filter(line => line.some(cell => cell.trim() !== ''));
+                };
+
+                const lines = parseCSV(csvText);
+                if (lines.length < 2) {
+                    document.getElementById('loading').innerHTML = '<div class="empty-box">表格中暂无数据，请检查飞书表格内容和权限</div>';
+                    return;
+                }
+
+                // 提取表头和数据
+                tableHeaders = lines[0].map(header => header.trim());
+                const dataRows = lines.slice(1);
+
+                // 自动识别字段类型，转换数据格式
+                originData = dataRows.map(row => {
+                    const item = {};
+                    tableHeaders.forEach((header, index) => {
+                        const value = row[index] || '';
+                        // 自动识别数字类型
+                        if (!isNaN(value) && value !== '' && !['型号', '名称', '品牌'].includes(header)) {
+                            item[header] = Number(value);
+                            fieldTypeMap[header] = 'number';
+                        } 
+                        // 自动识别图片类型
+                        else if (config.imageFieldNames.some(keyword => header.includes(keyword))) {
+                            item[header] = value;
+                            fieldTypeMap[header] = 'image';
+                        }
+                        // 文本类型
+                        else {
+                            item[header] = value;
+                            fieldTypeMap[header] = 'text';
+                        }
+                    });
+                    return item;
+                }).filter(item => {
+                    // 过滤空行，至少要有型号/名称
+                    return config.nameFieldNames.some(nameKey => item[nameKey]?.trim());
+                });
+
+                // 初始化数据
+                filteredData = [...originData];
+                document.getElementById('loading').style.display = 'none';
+
+            } catch (error) {
+                console.error('数据加载失败：', error);
+                document.getElementById('loading').innerHTML = `
+                    <div class="empty-box">
+                        <p class="fw-bold text-danger">数据加载失败，请检查以下设置：</p>
+                        <p>1. 飞书表格是否设置为「互联网上任何人可查看」</p>
+                        <p>2. 是否开启了「允许导出/下载」权限</p>
+                        <p>3. 若提示跨域，请使用代码中的备用跨域链接</p>
+                    </div>
+                `;
+            }
         }
 
-        const headers = Object.keys(data[0]);
-        const thead = document.getElementById('headers');
-        headers.forEach(header => {
-          const th = document.createElement('th');
-          th.className = 'px-6 py-3 text-left text-xs uppercase tracking-wider';
-          th.textContent = header;
-          thead.appendChild(th);
-        });
+        // 3. 自动生成筛选区域
+        function initFilterArea() {
+            const filterContainer = document.getElementById('filterContainer');
+            let filterHtml = '';
 
-        const tbody = document.getElementById('rows');
-        data.forEach(row => {
-          const tr = document.createElement('tr');
-          headers.forEach(header => {
-            const td = document.createElement('td');
-            td.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-900';
-            td.textContent = row[header] || '-';
-            tr.appendChild(td);
-          });
-          tbody.appendChild(tr);
-        });
-      },
-      error: function(error) {
-        document.getElementById('loading').innerHTML = '<p class="text-red-600 text-center py-10 font-bold">加载失败：' + error.message + '<br>请刷新页面或检查网络/代理</p>';
-        console.error('PapaParse Error:', error);
-      }
-    });
-  </script>
+            tableHeaders.forEach(header => {
+                const fieldType = fieldTypeMap[header];
+                // 1. 品牌列：优先展示，单独处理
+                if (config.brandFieldNames.includes(header)) {
+                    const allValues = [...new Set(originData.map(item => item[header]).filter(Boolean))];
+                    if (allValues.length === 0) return;
+
+                    filterHtml += `
+                        <div class="col-12 filter-group">
+                            <label class="form-label filter-title">${header}筛选</label>
+                            <div class="text-checkboxes" data-field="${header}">
+                                ${allValues.map(value => `
+                                    <div class="form-check">
+                                        <input class="form-check-input text-filter-checkbox" type="checkbox" value="${value}" id="filter-${header}-${value}" data-field="${header}">
+                                        <label class="form-check-label" for="filter-${header}-${value}">${value}</label>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+                }
+                // 2. 其他文本列：有不重复值的，生成筛选
+                else if (fieldType === 'text' && !config.nameFieldNames.includes(header) && !config.imageFieldNames.includes(header)) {
+                    const allValues = [...new Set(originData.map(item => item[header]).filter(Boolean))];
+                    // 只有当不重复值小于30个时才生成筛选，避免太多选项
+                    if (allValues.length > 1 && allValues.length <= 30) {
+                        filterHtml += `
+                            <div class="col-12 col-md-6 col-lg-4 filter-group">
+                                <label class="form-label filter-title">${header}</label>
+                                <div class="text-checkboxes" data-field="${header}">
+                                    ${allValues.map(value => `
+                                        <div class="form-check">
+                                            <input class="form-check-input text-filter-checkbox" type="checkbox" value="${value}" id="filter-${header}-${value}" data-field="${header}">
+                                            <label class="form-check-label" for="filter-${header}-${value}">${value}</label>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        `;
+                    }
+                }
+                // 3. 数字列：生成区间筛选
+                else if (fieldType === 'number') {
+                    filterHtml += `
+                        <div class="col-12 col-md-6 col-lg-3 filter-group">
+                            <label class="form-label filter-title">${header} 区间</label>
+                            <div class="range-group" data-field="${header}">
+                                <input type="number" class="form-control range-min-input" placeholder="最小值" data-field="${header}">
+                                <span>~</span>
+                                <input type="number" class="form-control range-max-input" placeholder="最大值" data-field="${header}">
+                            </div>
+                        </div>
+                    `;
+                }
+            });
+
+            filterContainer.innerHTML = filterHtml;
+        }
+
+        // 4. 自动生成排序选项
+        function initSortOptions() {
+            const sortSelect = document.getElementById('sortSelect');
+            let sortOptions = '<option value="default">默认排序</option>';
+
+            // 给所有数字列生成排序选项
+            tableHeaders.forEach(header => {
+                if (fieldTypeMap[header] === 'number') {
+                    sortOptions += `
+                        <option value="${header}-asc">${header} 从低到高</option>
+                        <option value="${header}-desc">${header} 从高到低</option>
+                    `;
+                }
+            });
+
+            sortSelect.innerHTML = sortOptions;
+        }
+
+        // 5. 执行筛选和排序
+        function filterAndSortData() {
+            // 1. 执行筛选
+            filteredData = originData.filter(item => {
+                // 全局关键词搜索
+                if (filterConfig.searchKeyword) {
+                    const keyword = filterConfig.searchKeyword.toLowerCase();
+                    const hasMatch = Object.values(item).some(value => {
+                        return value?.toString().toLowerCase().includes(keyword);
+                    });
+                    if (!hasMatch) return false;
+                }
+
+                // 文本多选筛选
+                let textFilterPass = true;
+                Object.keys(filterConfig.textFilters).forEach(field => {
+                    const selectedValues = filterConfig.textFilters[field];
+                    if (selectedValues.length > 0 && !selectedValues.includes(item[field])) {
+                        textFilterPass = false;
+                    }
+                });
+                if (!textFilterPass) return false;
+
+                // 数值区间筛选
+                let rangeFilterPass = true;
+                Object.keys(filterConfig.rangeFilters).forEach(field => {
+                    const { min, max } = filterConfig.rangeFilters[field];
+                    const value = item[field];
+                    if (min !== '' && (value === null || value < Number(min))) {
+                        rangeFilterPass = false;
+                    }
+                    if (max !== '' && (value === null || value > Number(max))) {
+                        rangeFilterPass = false;
+                    }
+                });
+                if (!rangeFilterPass) return false;
+
+                return true;
+            });
+
+            // 2. 执行排序
+            if (filterConfig.sortType !== 'default') {
+                const [sortField, sortDirection] = filterConfig.sortType.split('-');
+                filteredData.sort((a, b) => {
+                    const valueA = a[sortField] ?? (sortDirection === 'asc' ? Infinity : -Infinity);
+                    const valueB = b[sortField] ?? (sortDirection === 'asc' ? Infinity : -Infinity);
+                    return sortDirection === 'asc' ? valueA - valueB : valueB - valueA;
+                });
+            }
+        }
+
+        // 6. 渲染产品列表
+        function renderProductList() {
+            const productList = document.getElementById('productList');
+            
+            if (filteredData.length === 0) {
+                productList.innerHTML = '<div class="col-12 empty-box">暂无符合筛选条件的产品</div>';
+                return;
+            }
+
+            // 自动识别核心字段
+            const nameField = tableHeaders.find(header => config.nameFieldNames.some(key => header.includes(key))) || tableHeaders[0];
+            const brandField = tableHeaders.find(header => config.brandFieldNames.some(key => header.includes(key)));
+            const imageField = tableHeaders.find(header => config.imageFieldNames.some(key => header.includes(key)));
+
+            // 生成产品卡片
+            productList.innerHTML = filteredData.map((item, index) => {
+                // 生成参数展示（排除图片、空值）
+                let paramHtml = '';
+                let showParamCount = 0;
+                tableHeaders.forEach(header => {
+                    if (header !== nameField && header !== brandField && !config.imageFieldNames.includes(header) && item[header] !== '' && item[header] !== null && showParamCount < 8) {
+                        const value = item[header];
+                        const isNumber = fieldTypeMap[header] === 'number';
+                        paramHtml += `
+                            <div class="product-param">${header}：<span class="${isNumber ? 'param-highlight' : ''}">${value}</span></div>
+                        `;
+                        showParamCount++;
+                    }
+                });
+
+                return `
+                    <div class="col-12 col-sm-6 col-md-4 col-lg-3">
+                        <div class="product-card">
+                            <div class="form-check mb-2">
+                                <input class="form-check-input compare-checkbox" type="checkbox" data-index="${index}" id="check-${index}" ${selectedProducts.some(p => p[nameField] === item[nameField]) ? 'checked' : ''}>
+                                <label class="form-check-label" for="check-${index}">加入对比</label>
+                            </div>
+                            <img src="${item[imageField] || 'https://via.placeholder.com/300x180?text=暂无图片'}" class="product-img" alt="${item[nameField]}">
+                            <div class="product-name">${brandField && item[brandField] ? item[brandField] + ' ' : ''}${item[nameField]}</div>
+                            ${paramHtml}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            // 绑定对比复选框事件
+            bindCompareCheckbox();
+        }
+
+        // 7. 绑定对比复选框事件
+        function bindCompareCheckbox() {
+            const nameField = tableHeaders.find(header => config.nameFieldNames.some(key => header.includes(key))) || tableHeaders[0];
+            
+            document.querySelectorAll('.compare-checkbox').forEach(checkbox => {
+                checkbox.addEventListener('change', (e) => {
+                    const index = e.target.dataset.index;
+                    const product = filteredData[index];
+                    
+                    if (e.target.checked) {
+                        // 最多选4台
+                        if (selectedProducts.length >= config.maxCompareCount) {
+                            e.target.checked = false;
+                            alert(`最多只能选择${config.maxCompareCount}款机型进行对比`);
+                            return;
+                        }
+                        if (!selectedProducts.some(p => p[nameField] === product[nameField])) {
+                            selectedProducts.push(product);
+                        }
+                    } else {
+                        // 取消选中
+                        selectedProducts = selectedProducts.filter(p => p[nameField] !== product[nameField]);
+                    }
+
+                    // 更新对比栏
+                    updateCompareBar();
+                });
+            });
+        }
+
+        // 8. 更新底部对比栏
+        function updateCompareBar() {
+            const compareBar = document.getElementById('compareBar');
+            const selectedCount = document.getElementById('selectedCount');
+            const openCompareBtn = document.getElementById('openCompareBtn');
+
+            selectedCount.textContent = selectedProducts.length;
+            
+            if (selectedProducts.length > 0) {
+                compareBar.style.display = 'block';
+                openCompareBtn.disabled = selectedProducts.length < 2; // 至少选2台才能对比
+            } else {
+                compareBar.style.display = 'none';
+            }
+
+            // 生成对比表格
+            renderCompareTable();
+        }
+
+        // 9. 渲染对比表格
+        function renderCompareTable() {
+            const compareTable = document.getElementById('compareTable');
+            const nameField = tableHeaders.find(header => config.nameFieldNames.some(key => header.includes(key))) || tableHeaders[0];
+            const brandField = tableHeaders.find(header => config.brandFieldNames.some(key => header.includes(key)));
+
+            if (selectedProducts.length === 0) {
+                compareTable.innerHTML = '';
+                return;
+            }
+
+            // 生成表格内容
+            let tableHtml = '';
+            // 表头
+            tableHtml += '<thead><tr><th>参数项</th>';
+            selectedProducts.forEach(product => {
+                tableHtml += `<th>${brandField && product[brandField] ? product[brandField] + '<br>' : ''}${product[nameField]}</th>`;
+            });
+            tableHtml += '</tr></thead><tbody>';
+
+            // 参数行（排除图片列）
+            tableHeaders.forEach(header => {
+                if (config.imageFieldNames.some(key => header.includes(key))) return;
+
+                tableHtml += `<tr><td>${header}</td>`;
+                selectedProducts.forEach(product => {
+                    const value = product[header];
+                    const showValue = value === null || value === '' ? '-' : value;
+                    tableHtml += `<td>${showValue}</td>`;
+                });
+                tableHtml += '</tr>';
+            });
+
+            tableHtml += '</tbody>';
+            compareTable.innerHTML = tableHtml;
+        }
+
+        // 10. 初始化所有事件监听
+        function initEventListeners() {
+            // 全局搜索框事件
+            document.getElementById('searchInput').addEventListener('input', (e) => {
+                filterConfig.searchKeyword = e.target.value.trim();
+                filterAndSortData();
+                renderProductList();
+            });
+
+            // 文本筛选复选框事件
+            document.addEventListener('change', (e) => {
+                if (e.target.classList.contains('text-filter-checkbox')) {
+                    const field = e.target.dataset.field;
+                    const value = e.target.value;
+
+                    // 初始化该字段的筛选数组
+                    if (!filterConfig.textFilters[field]) {
+                        filterConfig.textFilters[field] = [];
+                    }
+
+                    // 更新筛选条件
+                    if (e.target.checked) {
+                        if (!filterConfig.textFilters[field].includes(value)) {
+                            filterConfig.textFilters[field].push(value);
+                        }
+                    } else {
+                        filterConfig.textFilters[field] = filterConfig.textFilters[field].filter(v => v !== value);
+                    }
+
+                    filterAndSortData();
+                    renderProductList();
+                }
+            });
+
+            // 数值区间筛选事件
+            document.addEventListener('input', (e) => {
+                if (e.target.classList.contains('range-min-input') || e.target.classList.contains('range-max-input')) {
+                    const field = e.target.dataset.field;
+                    // 初始化该字段的区间
+                    if (!filterConfig.rangeFilters[field]) {
+                        filterConfig.rangeFilters[field] = { min: '', max: '' };
+                    }
+
+                    // 更新区间值
+                    if (e.target.classList.contains('range-min-input')) {
+                        filterConfig.rangeFilters[field].min = e.target.value.trim();
+                    } else {
+                        filterConfig.rangeFilters[field].max = e.target.value.trim();
+                    }
+
+                    filterAndSortData();
+                    renderProductList();
+                }
+            });
+
+            // 排序选择事件
+            document.getElementById('sortSelect').addEventListener('change', (e) => {
+                filterConfig.sortType = e.target.value;
+                filterAndSortData();
+                renderProductList();
+            });
+
+            // 重置按钮事件
+            document.getElementById('resetBtn').addEventListener('click', () => {
+                // 清空所有筛选条件
+                filterConfig = {
+                    textFilters: {},
+                    rangeFilters: {},
+                    searchKeyword: '',
+                    sortType: 'default'
+                };
+                // 清空页面输入
+                document.getElementById('searchInput').value = '';
+                document.getElementById('sortSelect').value = 'default';
+                document.querySelectorAll('.text-filter-checkbox').forEach(checkbox => checkbox.checked = false);
+                document.querySelectorAll('.range-min-input, .range-max-input').forEach(input => input.value = '');
+                // 重置数据
+                filterAndSortData();
+                renderProductList();
+            });
+
+            // 清空对比按钮事件
+            document.getElementById('clearCompareBtn').addEventListener('click', () => {
+                selectedProducts = [];
+                document.querySelectorAll('.compare-checkbox').forEach(checkbox => checkbox.checked = false);
+                updateCompareBar();
+            });
+        }
+    </script>
 </body>
 </html>
