@@ -7,7 +7,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
   <style>
-    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f9fafb; color: #1f2937; }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f9fafb; color: #1f2937; margin: 0; padding: 0; }
     .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
     h1 { font-size: 2.5rem; font-weight: bold; text-align: center; color: #1d4ed8; margin-bottom: 2rem; }
     table { width: 100%; border-collapse: collapse; margin-top: 1rem; background: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
@@ -31,7 +31,8 @@
   </div>
 
   <script>
-    const CSV_URL = 'https://docs.google.com/spreadsheets/d/1sgKLZvTfmAfTzYzDlzmRzQrpmD9j1mom4pcylwknJN8/pub?output=csv';
+    // 用代理绕 CORS（corsproxy.io 免费，测试用；后期可换 Workers 代理）
+    const CSV_URL = 'https://corsproxy.io/?' + encodeURIComponent('https://docs.google.com/spreadsheets/d/1sgKLZvTfmAfTzYzDlzmRzQrpmD9j1mom4pcylwknJN8/pub?output=csv');
 
     Papa.parse(CSV_URL, {
       download: true,
@@ -42,7 +43,7 @@
         const data = results.data.filter(row => row['型号'] && row['型号'].trim() !== '');
         
         if (data.length === 0) {
-          document.getElementById('rows').innerHTML = '<tr><td colspan="20" class="text-center text-red-600 py-4">暂无数据或加载失败，请检查 Sheets 是否已发布并有有效行</td></tr>';
+          document.getElementById('rows').innerHTML = '<tr><td colspan="20" class="text-center text-red-600 py-4">暂无数据或加载失败</td></tr>';
           return;
         }
 
@@ -66,7 +67,7 @@
         });
       },
       error: function(error) {
-        document.getElementById('loading').innerHTML = '<p class="text-red-600 text-center py-4">数据加载失败：' + error.message + '<br>可能原因：CSV 未发布、CORS 限制或网络问题</p>';
+        document.getElementById('loading').innerHTML = '<p class="text-red-600 text-center py-4">加载失败：' + error.message + '<br>请检查网络或代理</p>';
         console.error('PapaParse Error:', error);
       }
     });
