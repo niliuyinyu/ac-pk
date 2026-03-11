@@ -25,7 +25,7 @@
 
   <script>
     // 用 allorigins.win 代理（更稳定）
-    const CSV_URL = 'https://api.allorigins.win/raw?url=' + encodeURIComponent('https://docs.google.com/spreadsheets/d/1sgKLZvTfmAfTzYzDlzmRzQrpmD9j1mom4pcylwknJN8/pub?output=csv');
+    const CSV_URL = './data.csv';   // 或 'https://raw.githubusercontent.com/niliuyinyu/ac-pk/main/data.csv'
 
     Papa.parse(CSV_URL, {
       download: true,
