@@ -7,25 +7,25 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 </head>
-<body class="bg-gray-50 min-h-screen">
-  <div class="max-w-6xl mx-auto p-6">
+<body class="bg-gray-50 min-h-screen p-6">
+  <div class="max-w-6xl mx-auto">
     <h1 class="text-4xl font-bold text-center text-blue-800 mb-8">热泵空调一体机参数对比</h1>
     
-    <div id="loading" class="text-center text-gray-700 text-lg mb-6">正在加载数据，请稍候...</div>
+    <div id="loading" class="text-center text-gray-700 text-xl mb-6">正在加载数据，请稍候...</div>
     
-    <div class="overflow-x-auto rounded-lg shadow-md">
-      <table class="min-w-full bg-white border border-gray-200 divide-y divide-gray-200">
+    <div class="overflow-x-auto rounded-xl shadow-lg bg-white">
+      <table class="min-w-full divide-y divide-gray-200">
         <thead class="bg-blue-600 text-white">
           <tr id="headers"></tr>
         </thead>
-        <tbody id="rows" class="divide-y divide-gray-200"></tbody>
+        <tbody id="rows" class="divide-y divide-gray-200 bg-white"></tbody>
       </table>
     </div>
   </div>
 
   <script>
-    // 代理绕 CORS（corsproxy.io 免费）
-    const CSV_URL = 'https://corsproxy.io/?' + encodeURIComponent('https://docs.google.com/spreadsheets/d/1sgKLZvTfmAfTzYzDlzmRzQrpmD9j1mom4pcylwknJN8/pub?output=csv');
+    // 用 allorigins.win 代理（更稳定）
+    const CSV_URL = 'https://api.allorigins.win/raw?url=' + encodeURIComponent('https://docs.google.com/spreadsheets/d/1sgKLZvTfmAfTzYzDlzmRzQrpmD9j1mom4pcylwknJN8/pub?output=csv');
 
     Papa.parse(CSV_URL, {
       download: true,
@@ -33,41 +33,37 @@
       skipEmptyLines: true,
       complete: function(results) {
         document.getElementById('loading').style.display = 'none';
-        const data = results.data.filter(row => row['型号'] && row['型号'].trim());
+        const data = results.data.filter(row => row['型号'] && row['型号'].trim() !== '');
 
         if (data.length === 0) {
-          document.getElementById('rows').innerHTML = '<tr><td colspan="20" class="text-center text-red-600 py-8 font-semibold">暂无数据或加载失败</td></tr>';
+          document.getElementById('rows').innerHTML = '<tr><td colspan="20" class="text-center text-red-600 py-10 font-bold">暂无数据或加载失败，请检查 Sheets 是否有内容</td></tr>';
           return;
         }
 
         const headers = Object.keys(data[0]);
         const thead = document.getElementById('headers');
-        headers.forEach(h => {
+        headers.forEach(header => {
           const th = document.createElement('th');
           th.className = 'px-6 py-3 text-left text-xs uppercase tracking-wider';
-          th.textContent = h;
+          th.textContent = header;
           thead.appendChild(th);
         });
 
         const tbody = document.getElementById('rows');
         data.forEach(row => {
           const tr = document.createElement('tr');
-          headers.forEach(h => {
+          headers.forEach(header => {
             const td = document.createElement('td');
             td.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-900';
-            if (h === '图片URL') {
-              td.innerHTML = row[h] ? `<img src="${row[h]}" alt="产品" class="w-24 h-auto rounded mx-auto">` : '-';
-            } else {
-              td.textContent = row[h] || '-';
-            }
+            td.textContent = row[header] || '-';
             tr.appendChild(td);
           });
           tbody.appendChild(tr);
         });
       },
-      error: function(err) {
-        document.getElementById('loading').innerHTML = '<p class="text-red-600 text-center py-8 font-semibold">加载失败：' + err.message + '<br>请检查网络、代理或 Sheets 发布状态</p>';
-        console.error('PapaParse Error:', err);
+      error: function(error) {
+        document.getElementById('loading').innerHTML = '<p class="text-red-600 text-center py-10 font-bold">加载失败：' + error.message + '<br>请刷新页面或检查网络/代理</p>';
+        console.error('PapaParse Error:', error);
       }
     });
   </script>
